@@ -1,4 +1,3 @@
-
 <?php
 
 namespace NW\WebService\References\Operations\Notification;
@@ -100,3 +99,41 @@ class TsReturnOperation extends ReferencesOperation
         if (!empty($emailFrom) && count($emails) > 0) {
             foreach ($emails as $email) {
               
+MessagesClient::sendMessage([
+    [
+        'type' => MessageTypes::EMAIL,
+        'emailFrom' => $emailFrom,
+        'emailTo' => $email,
+        'subject' => __('complaintEmployeeEmailSubject', $templateData, $resellerId),
+        'message' => __('complaintEmployeeEmailBody', $templateData, $resellerId),
+    ],
+], $resellerId, NotificationEvents::CHANGE_RETURN_STATUS);
+$result['notificationEmployeeByEmail'] = true;
+
+if (!empty($data['differences']['to'])) {
+    if (!empty($emailFrom) && !empty($client->email)) {
+        MessagesClient::sendMessage([
+            [
+                'type' => MessageTypes::EMAIL,
+                'emailFrom' => $emailFrom,
+                'emailTo' => $client->email,
+                'subject' => __('complaintClientEmailSubject', $templateData, $resellerId),
+                'message' => __('complaintClientEmailBody', $templateData, $resellerId),
+            ],
+        ], $resellerId, $client->id, NotificationEvents::CHANGE_RETURN_STATUS, (int)$data['differences']['to']);
+        $result['notificationClientByEmail'] = true;
+    }
+
+    if (!empty($client->mobile)) {
+        $res = NotificationManager::send($resellerId, $client->id, NotificationEvents::CHANGE_RETURN_STATUS, (int)$data['differences']['to'], $templateData, $error);
+        if ($res) {
+            $result['notificationClientBySms']['isSent'] = true;
+        }
+        if (!empty($error)) {
+            $result['notificationClientBySms']['message'] =  $error;
+        }
+    }
+}
+
+return $result;
+}
